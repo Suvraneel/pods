@@ -53,7 +53,8 @@ const Camera = () => {
       image: imageHash,
     };
     const metadataFile = new Moralis.File('metadata.json', {
-      base64: btoa(JSON.stringify(metadata)),
+      // base64: btoa(JSON.stringify(metadata)),
+      base64: Buffer.from(JSON.stringify(metadata)).toString('base64'),
     });
 
     await metadataFile.saveIPFS();
