@@ -1,42 +1,40 @@
 import {
+  Dimensions,
+  FlatList,
+  Image,
+  Linking,
   StyleSheet,
-  SafeAreaView,
   Text,
   View,
-  Image,
-  ScrollView,
-  FlatList,
-  Linking,
-  Dimensions,
+  Alert,
+  Modal,
+  Pressable,
 } from 'react-native';
-import React, {useState} from 'react';
-import {TouchableOpacity} from 'react-native-gesture-handler';
-import {colors} from '../shared/styles';
-import {H2, H3} from '../shared/Typography';
+import InputField from './Common/InputField';
+import {faCamera, faImages} from '@fortawesome/free-solid-svg-icons';
 import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
-import {faCamera, faImages, faUpload} from '@fortawesome/free-solid-svg-icons';
+import React, {useState} from 'react';
+import {useMoralis, useWeb3ExecuteFunction} from 'react-moralis';
+import {TouchableOpacity} from 'react-native-gesture-handler';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
-import {
-  useMoralisFile,
-  useMoralis,
-  useWeb3ExecuteFunction,
-  useMoralisQuery,
-} from 'react-moralis';
-import mintingNFTContractABI from "../../../smartContract/ABIs/minter.json";
+import mintingNFTContractABI from '../../../smartContract/ABIs/minter.json';
+import {colors} from '../shared/styles';
+import {H2} from '../shared/Typography';
 const includeExtra = true;
 
 const windowWidth = Dimensions.get('window').width;
-const mintingNFTContractAddress = "0x74Fd20EA4C0D0250dCA622df7638aFde0Cb96463";
-
+const mintingNFTContractAddress = '0x74Fd20EA4C0D0250dCA622df7638aFde0Cb96463';
 
 const Camera = () => {
   const {Moralis, account} = useMoralis();
   const contractProcessor = useWeb3ExecuteFunction();
   const [nftName, setNftName] = useState('Something');
   const [nftDescription, setNftDescription] = useState('something');
-
-  async function uploadFile(file) {
+  const [modalVisible, setModalVisible] = useState(false);
+  async function uploadFile() {
+    var file = response;
     console.log(typeof file);
+    setModalVisible(false);
     // var jezzon = JSON.parse(file);
     console.log('Uppppppploading to Hadron Collider server!!!');
     const imageFile = new Moralis.File('Diablo.jpg', {
@@ -53,31 +51,30 @@ const Camera = () => {
       name: nftName,
       description: nftDescription,
       image: imageHash,
-    }
-    const metadataFile = new Moralis.File("metadata.json", {
+    };
+    const metadataFile = new Moralis.File('metadata.json', {
       base64: btoa(JSON.stringify(metadata)),
     });
 
     await metadataFile.saveIPFS();
     const metadataHash = await metadataFile.ipfs();
     callingSmartContract(metadataHash);
-
   }
 
-  async function callingSmartContract(metadataHash){
+  async function callingSmartContract(metadataHash) {
     const options = {
       contractAddress: mintingNFTContractAddress,
       abi: mintingNFTContractABI,
-      functionName: "createToken",
-      params:{
+      functionName: 'createToken',
+      params: {
         tokenURI: metadataHash,
-      }
-    }
+      },
+    };
     await contractProcessor.fetch({
       params: options,
       onSuccess: () => console.log('NFT created successfully'),
       onError: error => console.log(error),
-    })
+    });
   }
 
   const [response, setResponse] = useState(null);
@@ -132,66 +129,106 @@ const Camera = () => {
   //     },
   //   ];
   const onButtonPress = React.useCallback((type, options) => {
+    // async function imgPicked() {
+    //   let promise = new Promise(() => {
+    //     if (type === 'capture') launchCamera(options, setResponse);
+    //     else launchImageLibrary(options, setResponse);
+    //   });
+    //   let result = await promise;
+    //   setModalVisible(true);
+    // }
     if (type === 'capture') {
-      launchCamera(options, setResponse).then(response => {uploadFile(response)});
+      launchCamera(options, setResponse).then(response => {
+        setModalVisible(true);
+        // uploadFile();
+      });
     } else {
-      launchImageLibrary(options, setResponse).then(response => {uploadFile(response)});
+      launchImageLibrary(options, setResponse).then(response => {
+        setModalVisible(true);
+        // uploadFile(response);
+      });
     }
   }, []);
   return (
-    <View style={styles.viewContainer}>
-      <View style={styles.colContainer}>
-        <H2>INSTANT NFT MINTER</H2>
-        <View style={{height: 5}}></View>
-        <View style={styles.moonContainer}>
-          <TouchableOpacity
-            onPress={() =>
-              onButtonPress('capture', {
-                saveToPhotos: true,
-                mediaType: 'photo',
-                includeBase64: true,
-                includeExtra,
-              })
-            }
-            style={styles.button}>
-            <FontAwesomeIcon icon={faCamera} size={30} color={colors.white} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() =>
-              onButtonPress('selector', {
-                saveToPhotos: true,
-                mediaType: 'photo',
-                includeBase64: true,
-                includeExtra,
-              })
-            }
-            style={styles.button}>
-            <FontAwesomeIcon icon={faImages} size={30} color={colors.white} />
-          </TouchableOpacity>
-        </View>
-        {/* <TouchableOpacity
+    <>
+      {modalVisible ? (
+        <PopUpModal
+          setModalVisible={setModalVisible}
+          modalVisible={modalVisible}
+          nftName={nftName}
+          setNftName={setNftName}
+          nftDescription={nftDescription}
+          setNftDescription={setNftDescription}
+          uploadFile={uploadFile}
+        />
+      ) : (
+        <View style={styles.viewContainer}>
+          <View style={styles.colContainer}>
+            <H2>INSTANT NFT MINTER</H2>
+            <View style={{height: 5}}></View>
+            <View style={styles.moonContainer}>
+              <TouchableOpacity
+                onPress={() =>
+                  onButtonPress('capture', {
+                    saveToPhotos: true,
+                    mediaType: 'photo',
+                    includeBase64: true,
+                    includeExtra,
+                  })
+                }
+                style={styles.button}>
+                <FontAwesomeIcon
+                  icon={faCamera}
+                  size={30}
+                  color={colors.white}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() =>
+                  onButtonPress('selector', {
+                    saveToPhotos: true,
+                    mediaType: 'photo',
+                    includeBase64: true,
+                    includeExtra,
+                  })
+                }
+                style={styles.button}>
+                <FontAwesomeIcon
+                  icon={faImages}
+                  size={30}
+                  color={colors.white}
+                />
+              </TouchableOpacity>
+            </View>
+            {/* <TouchableOpacity
           onPress={() => uploadFile(response)}
           style={styles.buttonStyle}>
           <H3>Mint Image as NFT</H3>
         </TouchableOpacity> */}
-      </View>
-      <View style={{width: '100%', flexDirection: 'row', justifyContent: 'center'}}>
-        <FlatList
-          key="_"
-          numColumns={3}
-          style={{flexWrap: 'wrap', flexDirection: 'row'}}
-          contentContainerStyle={{
-            alignItems: 'flex-start',
-            justifyContent: 'space-evenly',
-          }}
-          extraData={images}
-          data={images}
-          keyExtractor={item => item}
-          renderItem={({item}) => <ImageGallery imageUrl={item} />}
-          
-        />
-      </View>
-    </View>
+          </View>
+          <View
+            style={{
+              width: '100%',
+              flexDirection: 'row',
+              justifyContent: 'center',
+            }}>
+            <FlatList
+              key="_"
+              numColumns={3}
+              style={{flexWrap: 'wrap', flexDirection: 'row'}}
+              contentContainerStyle={{
+                alignItems: 'flex-start',
+                justifyContent: 'space-evenly',
+              }}
+              extraData={images}
+              data={images}
+              keyExtractor={item => item}
+              renderItem={({item}) => <ImageGallery imageUrl={item} />}
+            />
+          </View>
+        </View>
+      )}
+    </>
   );
 };
 
@@ -209,6 +246,68 @@ const ImageGallery = ({imageUrl}) => {
         }}
       />
     </TouchableOpacity>
+  );
+};
+
+const PopUpModal = ({
+  modalVisible,
+  setModalVisible,
+  nftName,
+  setNftName,
+  nftDescription,
+  setNftDescription,
+  uploadFile
+}) => {
+  return (
+    <View style={styles.centeredView}>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          Alert.alert('Modal has been closed.');
+          setModalVisible(!modalVisible);
+        }}>
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Enter NFT MetaData</Text>
+            <InputField
+              value={nftName}
+              setvalue={setNftName}
+              LabelName="Name"
+              placeholder="Name your NFT"
+              containerStyle={{marginTop: 15, width: '100%'}}
+            />
+            <InputField
+              value={nftDescription}
+              setvalue={setNftDescription}
+              LabelName="Description"
+              placeholder="One line description"
+              containerStyle={{marginTop: 15, width: '100%'}}
+            />
+            <View
+              style={{
+                alignItems: 'center',
+                flexDirection: 'row',
+                justifyContent: 'space-evenly',
+                position: 'absolute',
+                bottom: 20,
+              }}>
+              <Pressable
+                style={[styles.button, styles.buttonClose]}
+                onPress={() => setModalVisible(!modalVisible)}>
+                <Text style={styles.textStyle}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.button, styles.buttonSubmit]}
+                onPress={uploadFile}>
+                <Text style={styles.textStyle}>Mint NFT</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
 
@@ -258,6 +357,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 20,
     paddingHorizontal: 20,
+  },
+
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  modalView: {
+    width: '90%',
+    height: '80%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    paddingVertical: 25,
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  buttonSubmit: {
+    backgroundColor: '#F194FF',
+    width: '55%',
+  },
+  buttonClose: {
+    backgroundColor: '#2196F3',
+    width: '40%',
+  },
+  textStyle: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  modalText: {
+    marginBottom: 15,
+    textAlign: 'center',
   },
 });
 
